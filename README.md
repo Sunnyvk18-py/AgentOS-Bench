@@ -28,14 +28,44 @@ Visit http://localhost:3000
 See [architecture.md](architecture.md) for full system diagram.
 
 ## Adding Your Own Agent
-```python
-from app.agents.base import BaseAgent, AgentResult
 
+### Option A — Drop a file (zero config)
+```bash
+cp my_agent.py backend/app/agents/
+# That's it. Auto-discovered. No restart needed.
+```
+
+### Option B — CLI
+```bash
+pip install -e backend/
+agentbench agents add ./my_agent.py
+```
+
+### Option C — UI
+Click **Upload Agent** on the dashboard or in the New Eval Run modal.
+
+### Agent Template
+Copy `backend/app/agents/TEMPLATE.py` and implement `execute()`.
+The only requirement: return an `AgentResult`.
+
+```python
 class MyAgent(BaseAgent):
+    __agent_name__ = "my_agent"
+    __agent_description__ = "Does something useful"
+
     async def execute(self, task: str) -> AgentResult:
-        # your agent logic here
-        return AgentResult(output=..., steps=..., 
-                          tools_used=..., total_tokens=..., cost_usd=...)
+        result = await my_logic(task)
+        return AgentResult(output=result, tools_used=[], 
+                          total_tokens=100, cost_usd=0.001)
+```
+
+### CLI Quick Reference
+```bash
+agentbench agents list              # see all registered agents
+agentbench run --agent my_agent --model gpt-4o --task "your task"
+agentbench benchmark --name "Test" --task "your task" --models gpt-4o,claude-3-5-sonnet --agent my_agent
+agentbench report --run-id abc123 --format markdown
+agentbench status                   # health check
 ```
 
 ## Metrics Explained

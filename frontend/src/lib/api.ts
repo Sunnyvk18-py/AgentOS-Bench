@@ -1,5 +1,6 @@
 import type {
   AgentInfo,
+  AgentValidateResult,
   APIResponse,
   BenchmarkRequest,
   BenchmarkResult,
@@ -66,6 +67,16 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getAgents: () => request<AgentInfo[]>("/api/agents"),
+  validateAgent: (content: string) =>
+    request<AgentValidateResult>("/api/agents/validate", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+  registerAgent: (filename: string, content: string) =>
+    request<{ filename: string; agent_name: string; message: string }>("/api/agents/register", {
+      method: "POST",
+      body: JSON.stringify({ filename, content }),
+    }),
   exportReport: (runId: string, format: "json" | "markdown") =>
     request<Record<string, unknown> | string>("/api/reports/export", {
       method: "POST",

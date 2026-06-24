@@ -10,6 +10,8 @@ from sqlalchemy import text
 
 from app.api import agents, benchmark, reports, runs
 from app.config import get_settings
+from app.agents import on_agents_changed
+from app.core.agent_watcher import AgentWatcher
 from app.core.kafka_consumer import kafka_consumer
 from app.core.kafka_producer import kafka_producer
 from app.database import create_all_tables, engine
@@ -20,14 +22,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 settings = get_settings()
+agent_watcher = AgentWatcher(on_change=on_agents_changed)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting AgentOS Bench API (env=%s)", settings.ENV)
     await create_all_tables()
+    on_agents_changed()
+    agent_watcher.start()
     await kafka_consumer.start()
     yield
+    agent_watcher.stop()
     await kafka_consumer.stop()
     kafka_producer.flush()
     await engine.dispose()
@@ -76,10 +82,33 @@ async def health_check() -> dict[str, Any]:
     except Exception as exc:
         logger.warning("Health check DB failed: %s", exc)
 
+    from app.agents import get_agent_registry
+    from sqlalchemy import func, select
+    from app.database import AsyncSessionLocal
+    from app.models.run import EvalRun
+
+    agents_count = len(get_agent_registry())
+    completed_runs_today = 0
+    try:
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        async with AsyncSessionLocal() as session:
+            completed_runs_today = (
+                await session.execute(
+                    select(func.count()).select_from(EvalRun).where(
+                        EvalRun.status == "completed",
+                        EvalRun.completed_at >= today_start,
+                    )
+                )
+            ).scalar() or 0
+    except Exception as exc:
+        logger.warning("Health check runs count failed: %s", exc)
+
     return {
         "status": "ok" if db_ok else "degraded",
         "db": "connected" if db_ok else "disconnected",
         "kafka": "connected" if kafka_ok else "unavailable",
+        "agents_count": agents_count,
+        "completed_runs_today": completed_runs_today,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

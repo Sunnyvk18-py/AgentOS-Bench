@@ -9,8 +9,17 @@ from app.agents.base import AgentResult, BaseAgent
 logger = logging.getLogger(__name__)
 
 
+"""Built-in mock agent for testing without real LLM calls."""
+
+__agent_name__ = "mock"
+__agent_description__ = "Built-in mock agent for testing without API keys"
+__agent_config_schema__ = {
+    "error_rate": {"type": "float", "default": 0.0, "description": "Simulated failure rate"},
+    "step_count": {"type": "int", "default": 4, "description": "Number of reasoning steps"},
+}
+
+
 class MockAgent(BaseAgent):
-    """Mock agent for testing without real LLM calls."""
 
     def __init__(
         self,

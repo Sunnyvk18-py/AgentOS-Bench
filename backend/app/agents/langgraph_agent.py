@@ -24,8 +24,15 @@ class AgentState(TypedDict):
     output: str
 
 
+__agent_name__ = "langgraph"
+__agent_description__ = "LangGraph-based agent with reasoning and tool call nodes"
+__agent_config_schema__ = {
+    "system_prompt": {"type": "string", "default": "You are a helpful AI agent."},
+    "tools": {"type": "array", "default": [], "description": "Optional tool definitions"},
+}
+
+
 class LangGraphAgent(BaseAgent):
-    """LangGraph plugin with reasoning → tool_call → output flow."""
 
     def __init__(
         self,

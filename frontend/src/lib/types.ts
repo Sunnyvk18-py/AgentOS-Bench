@@ -59,7 +59,15 @@ export interface BenchmarkResult {
 export interface AgentInfo {
   name: string;
   description: string;
-  config_schema: Record<string, unknown>;
+  config_schema: Record<string, { type?: string; default?: unknown; description?: string }>;
+  is_built_in?: boolean;
+}
+
+export interface AgentValidateResult {
+  valid: boolean;
+  errors: string[];
+  agent_name: string | null;
+  description: string | null;
 }
 
 export interface DashboardStats {

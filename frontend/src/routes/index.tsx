@@ -4,15 +4,20 @@ import { Header } from "@/components/layout/Header";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { ScoreTrendChart } from "@/components/dashboard/ScoreTrendChart";
 import { ModelCompareBar } from "@/components/dashboard/ModelCompareBar";
-import { NewRunModal } from "@/components/runs/NewRunModal";
+import { AgentCard } from "@/components/agents/AgentCard";
+import { AgentUploadModal } from "@/components/agents/AgentUploadModal";
+import { useAgentsLive } from "@/hooks/useAgentStream";
 import { RunStatusBadge } from "@/components/runs/RunStatusBadge";
+import { NewRunModal } from "@/components/runs/NewRunModal";
 import { useStats } from "@/hooks/useRuns";
 import { formatScore, truncateId } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
 export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const { data, isLoading, isError } = useStats();
+  const { data: agents, isLoading: agentsLoading, isError: agentsError, newAgents } = useAgentsLive();
 
   return (
     <>
@@ -32,6 +37,40 @@ export default function DashboardPage() {
 
       <div className="space-y-6">
         <StatsCards />
+
+        <div className="card-hover rounded-xl border border-border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-foreground/80">Registered Agents</h3>
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="text-sm text-primary hover:underline"
+            >
+              Upload Agent
+            </button>
+          </div>
+          {agentsLoading ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="skeleton h-32 rounded-xl" />
+              ))}
+            </div>
+          ) : agentsError ? (
+            <p className="text-error">Failed to load registered agents.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {(agents || []).map((agent) => (
+                <AgentCard
+                  key={agent.name}
+                  name={agent.name}
+                  description={agent.description}
+                  configSchema={agent.config_schema}
+                  isBuiltIn={agent.is_built_in ?? ["mock", "langgraph"].includes(agent.name)}
+                  isNew={newAgents.has(agent.name)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <ScoreTrendChart />
@@ -80,6 +119,7 @@ export default function DashboardPage() {
       </div>
 
       <NewRunModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <AgentUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </>
   );
 }

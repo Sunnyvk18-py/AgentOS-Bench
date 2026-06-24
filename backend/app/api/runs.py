@@ -11,7 +11,7 @@ from app.api.responses import error_response, success_response
 from app.core.eval_runner import EvalRunner
 from app.database import AsyncSessionLocal, get_db
 from app.models.run import AgentStep, EvalRun
-from app.schemas.run import EvalRunCreate, EvalRunResponse, ScoreBreakdown
+from app.schemas.run import AgentStepResponse, EvalRunCreate, EvalRunResponse, ScoreBreakdown
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -142,7 +142,9 @@ async def get_run_steps(run_id: str, db: AsyncSession = Depends(get_db)) -> dict
             .order_by(AgentStep.step_index)
         )
         steps = result.scalars().all()
-        return success_response([s.__dict__ for s in steps])
+        return success_response(
+            [AgentStepResponse.model_validate(s).model_dump() for s in steps]
+        )
     except Exception as exc:
         logger.exception("Failed to get steps: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc

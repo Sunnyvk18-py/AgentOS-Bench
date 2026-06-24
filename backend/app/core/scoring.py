@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from functools import lru_cache
 
@@ -8,6 +9,7 @@ from app.utils.llm_judge import LLMJudge
 logger = logging.getLogger(__name__)
 
 _judge = LLMJudge()
+_semantic_enabled = os.getenv("USE_SEMANTIC_SCORING", "false").lower() == "true"
 
 
 def normalize_latency(latency_ms: int) -> float:
@@ -60,6 +62,8 @@ def _token_overlap(expected: str, actual: str) -> float:
 
 @lru_cache(maxsize=1)
 def _get_sentence_model():
+    if not _semantic_enabled:
+        return None
     try:
         from sentence_transformers import SentenceTransformer
 

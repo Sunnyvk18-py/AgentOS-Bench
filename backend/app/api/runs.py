@@ -17,6 +17,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/runs", tags=["runs"])
 
 
+def _run_to_response(run: EvalRun, steps: list | None = None) -> EvalRunResponse:
+    step_items = steps if steps is not None else []
+    return EvalRunResponse(
+        id=run.id,
+        agent_name=run.agent_name,
+        llm_model=run.llm_model,
+        task_description=run.task_description,
+        status=run.status,
+        composite_score=run.composite_score,
+        accuracy_score=run.accuracy_score,
+        hallucination_score=run.hallucination_score,
+        tool_call_precision=run.tool_call_precision,
+        latency_ms=run.latency_ms,
+        cost_usd=run.cost_usd,
+        total_steps=run.total_steps,
+        created_at=run.created_at,
+        completed_at=run.completed_at,
+        steps=[AgentStepResponse.model_validate(s) for s in step_items],
+    )
+
+
 async def _execute_run(run_id: str, payload: EvalRunCreate) -> None:
     async with AsyncSessionLocal() as session:
         try:
@@ -53,7 +74,7 @@ async def create_run(
             task_description=payload.task_description,
         )
         background_tasks.add_task(_execute_run, run.id, payload)
-        return success_response(EvalRunResponse.model_validate(run).model_dump())
+        return success_response(_run_to_response(run).model_dump())
     except HTTPException:
         raise
     except Exception as exc:
@@ -87,7 +108,7 @@ async def list_runs(
 
         return success_response(
             {
-                "items": [EvalRunResponse.model_validate(r).model_dump() for r in runs],
+                "items": [_run_to_response(r).model_dump() for r in runs],
                 "total": total,
                 "page": page,
                 "page_size": page_size,
@@ -107,8 +128,7 @@ async def get_run(run_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, 
         run = result.scalar_one_or_none()
         if not run:
             raise HTTPException(status_code=404, detail="Run not found")
-        response = EvalRunResponse.model_validate(run)
-        return success_response(response.model_dump())
+        return success_response(_run_to_response(run, run.steps).model_dump())
     except HTTPException:
         raise
     except Exception as exc:
